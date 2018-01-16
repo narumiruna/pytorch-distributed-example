@@ -25,7 +25,7 @@ def foo(rank, world_size):
         sleep(1)
 
 
-def init(rank, world_size, ip, port):
+def initialize(rank, world_size, ip, port):
     dist.init_process_group(backend='tcp',
                             init_method='tcp://{}:{}'.format(ip, port),
                             rank=rank,
@@ -42,7 +42,7 @@ def main():
     args = parser.parse_args()
     print(args)
     
-    init(args.rank, args.size, args.ip, args.port)
+    initialize(args.rank, args.size, args.ip, args.port)
 
 if __name__ == '__main__':
     main()
