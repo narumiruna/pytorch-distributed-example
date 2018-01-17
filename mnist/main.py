@@ -1,12 +1,11 @@
 import argparse
 
 import torch
+import torch.nn.functional as F
 from torch import distributed, nn
 from torch.autograd import Variable
 from torch.utils import data
 from torchvision import datasets, transforms
-
-import torch.nn.functional as F
 
 
 class Net(nn.Module):
