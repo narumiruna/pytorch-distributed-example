@@ -86,7 +86,7 @@ def average_gradients(args, net):
 
     for p in net.parameters():
         group = distributed.new_group(ranks=list(range(world_size)))
-         
+
 
         tensor = p.grad.data.cpu()
 
@@ -175,22 +175,5 @@ def main():
 
     init_process(args)
 
-
-def test_mnist():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--epochs', type=int, default=20)
-    parser.add_argument('--cuda', action='store_true')
-    parser.add_argument('--learning_rate', '-lr', type=float, default=1e-3)
-    parser.add_argument('--data-dir', type=str, default='data')
-    parser.add_argument('--batch-size', type=int, default=128)
-    parser.add_argument('--num-workers', type=int, default=1)
-    parser.add_argument('--log-interval', type=int, default=1000)
-    args = parser.parse_args()
-    print(args)
-
-    solve(args)
-
-
 if __name__ == '__main__':
     main()
-    # test_mnist()
