@@ -81,16 +81,24 @@ def evaluate(args, net, test_dataloader):
     return accuracy
 
 
-def average_gradients(net):
+def average_gradients(args, net):
     world_size = distributed.get_world_size()
 
     for p in net.parameters():
         group = distributed.new_group(ranks=list(range(world_size)))
-        distributed.all_reduce(p.grad.data,
+         
+
+        tensor = p.grad.data.cpu()
+
+        distributed.all_reduce(tensor,
                                op=distributed.reduce_op.SUM,
                                group=group)
-        p.grad.data /= float(world_size)
 
+        tensor /= float(world_size)
+        if args.cuda:
+            p.grad.data = tensor.cuda()
+        else:
+            p.grad.data = tensor
 
 def train(args, epoch, net, optimizer, train_loader, test_loader):
     for train_index, (train_x, train_y) in enumerate(train_loader):
@@ -108,7 +116,7 @@ def train(args, epoch, net, optimizer, train_loader, test_loader):
 
         loss.backward()
         # average the gradients
-        average_gradients(net)
+        average_gradients(args, net)
 
         optimizer.step()
         optimizer.zero_grad()
