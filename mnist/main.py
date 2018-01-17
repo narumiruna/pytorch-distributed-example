@@ -82,14 +82,14 @@ def evaluate(args, net, test_dataloader):
 
 
 def average_gradients(net):
-    world_size = float(distributed.get_world_size())
+    world_size = distributed.get_world_size()
 
     for p in net.parameters():
         group = distributed.new_group(ranks=list(range(world_size)))
         distributed.all_reduce(p.grad.data,
                                op=distributed.reduce_op.SUM,
                                group=group)
-        p.grad.data /= world_size
+        p.grad.data /= float(world_size)
 
 
 def train(args, epoch, net, optimizer, train_loader, test_loader):
@@ -109,6 +109,7 @@ def train(args, epoch, net, optimizer, train_loader, test_loader):
         loss.backward()
         # average the gradients
         average_gradients(net)
+
         optimizer.step()
         optimizer.zero_grad()
 
@@ -118,8 +119,7 @@ def train(args, epoch, net, optimizer, train_loader, test_loader):
 
             print('Train epoch: {}, batch index: {}, loss: {}, accuracy: {}.'.format(epoch,
                                                                                      train_index,
-                                                                                     float(
-                                                                                         loss.data),
+                                                                                     float(loss.data),
                                                                                      accuracy))
 
 
@@ -157,13 +157,15 @@ def main():
     parser.add_argument('--backend', type=str, default='tcp')
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--cuda', action='store_true')
-    parser.add_argument('--learning_rate', '-lr', typr=float, default=1e-3)
+    parser.add_argument('--learning_rate', '-lr', type=float, default=1e-3)
     parser.add_argument('--data-dir', type=str, default='data')
     parser.add_argument('--batch-size', type=int, default=128)
     parser.add_argument('--num-workers', type=int, default=1)
     parser.add_argument('--log-interval', type=int, default=1000)
     args = parser.parse_args()
     print(args)
+
+    init_process(args)
 
 
 def test_mnist():
