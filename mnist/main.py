@@ -113,12 +113,12 @@ def train(args, epoch, net, optimizer, train_loader, test_loader):
         pred_y = net(train_x)
         loss = F.cross_entropy(pred_y, train_y)
 
+        optimizer.zero_grad()
         loss.backward()
         # average the gradients
         average_gradients(args, net)
 
         optimizer.step()
-        optimizer.zero_grad()
 
         if train_index % args.log_interval == 0:
 
