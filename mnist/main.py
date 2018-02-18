@@ -117,7 +117,6 @@ def train(args, epoch, net, optimizer, train_loader, test_loader):
         loss.backward()
         # average the gradients
         average_gradients(args, net)
-
         optimizer.step()
 
         if train_index % args.log_interval == 0:
