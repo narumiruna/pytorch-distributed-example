@@ -174,11 +174,12 @@ def main():
     parser.add_argument('--world-size', '-s', type=int)
     parser.add_argument('--backend', type=str, default='tcp')
     parser.add_argument('--epochs', type=int, default=20)
-    parser.add_argument('--cuda', action='store_true')
+    parser.add_argument('--no-cuda', action='store_true')
     parser.add_argument('--learning_rate', '-lr', type=float, default=1e-3)
     parser.add_argument('--root', type=str, default='data')
     parser.add_argument('--batch-size', type=int, default=128)
     args = parser.parse_args()
+    args.cuda = torch.cuda.is_available() and not args.no_cuda
     print(args)
 
     init_process(args)
