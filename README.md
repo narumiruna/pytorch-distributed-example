@@ -1,1 +1,1 @@
-# Pytorch-Distributed-Example
+# Pytorch Distributed Example
