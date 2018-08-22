@@ -3,155 +3,167 @@ import argparse
 import torch
 import torch.nn.functional as F
 from torch import distributed, nn
-from torch.autograd import Variable
 from torch.utils import data
 from torchvision import datasets, transforms
 
 
+class Trainer(object):
+
+    def __init__(self, net, optimizer, train_loader, test_loader, device):
+        self.net = net
+        self.optimizer = optimizer
+        self.train_loader = train_loader
+        self.test_loader = test_loader
+        self.device = device
+
+    def train(self):
+        train_loss = AverageMeter()
+        train_acc = AccuracyMeter()
+
+        self.net.train()
+
+        for x, y in self.train_loader:
+            x = x.to(self.device)
+            y = y.to(self.device)
+
+            out = self.net(x)
+            loss = F.cross_entropy(out, y)
+
+            self.optimizer.zero_grad()
+            loss.backward()
+            # average the gradients
+            self.average_gradients()
+            self.optimizer.step()
+
+            y_pred = out.data.argmax(dim=1)
+            correct = y_pred.eq(y.data).sum().item()
+
+            train_loss.update(loss.data.item(), x.size(0))
+            train_acc.update(correct, x.size(0))
+
+        return train_loss.average, train_acc.accuracy
+
+    def evaluate(self):
+        test_loss = AverageMeter()
+        test_acc = AccuracyMeter()
+
+        self.net.eval()
+
+        for x, y in self.test_loader:
+            x = x.to(self.device)
+            y = y.to(self.device)
+
+            out = self.net(x)
+            loss = F.cross_entropy(out, y)
+            y_pred = out.data.argmax(dim=1)
+            correct = y_pred.eq(y.data).sum().item()
+
+            test_loss.update(loss.data.item(), x.size(0))
+            test_acc.update(correct, x.size(0))
+
+        return test_loss.average, test_acc.accuracy
+
+    def average_gradients(self):
+        world_size = distributed.get_world_size()
+
+        for p in self.net.parameters():
+            group = distributed.new_group(ranks=list(range(world_size)))
+
+            tensor = p.grad.data.cpu()
+
+            distributed.all_reduce(
+                tensor, op=distributed.reduce_op.SUM, group=group)
+
+            tensor /= float(world_size)
+
+            p.grad.data = tensor.to(self.device)
+
+
 class Net(nn.Module):
+
     def __init__(self):
         super(Net, self).__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(1, 32, 5, 2, 0),
-            nn.BatchNorm2d(32),
-            nn.ReLU(),
-            nn.Dropout2d(),
-            nn.Conv2d(32, 64, 5, 2, 0),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.Dropout2d(),
-        )
+        self.fc = nn.Linear(784, 10)
 
-        self.linear = nn.Sequential(
-            nn.Linear(64 * 4 * 4, 1024),
-            nn.ReLU(),
-            nn.Dropout(),
-            nn.Linear(1024, 10)
-        )
-
-    def forward(self, input_):
-        output = self.conv(input_)
-        output = output.view(-1, 64 * 4 * 4)
-        output = self.linear(output)
-        return output
+    def forward(self, x):
+        out = x.view(x.size(0), -1)
+        out = self.fc(out)
+        return out
 
 
-def get_dataloader(root, batch_size, shuffle=True, num_workers=0):
+def get_dataloader(root, batch_size):
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.13066047740239478,), (0.3081078087569972,))
     ])
 
-    train_loader = data.DataLoader(datasets.MNIST(root,
-                                                  train=True,
-                                                  transform=transform,
-                                                  download=True),
-                                   batch_size=batch_size,
-                                   shuffle=shuffle,
-                                   num_workers=num_workers)
+    train_loader = data.DataLoader(
+        datasets.MNIST(root, train=True, transform=transform, download=True),
+        batch_size=batch_size,
+        shuffle=True)
 
-    test_loader = data.DataLoader(datasets.MNIST(root,
-                                                 train=False,
-                                                 transform=transform,
-                                                 download=True),
-                                  batch_size=batch_size,
-                                  shuffle=shuffle,
-                                  num_workers=num_workers)
+    test_loader = data.DataLoader(
+        datasets.MNIST(root, train=False, transform=transform, download=True),
+        batch_size=batch_size,
+        shuffle=False)
 
     return train_loader, test_loader
 
 
-def evaluate(args, net, test_dataloader):
-    net.eval()
+class AverageMeter(object):
 
-    correct = 0
-    for test_index, (test_x, test_y) in enumerate(test_dataloader):
-        test_x = Variable(test_x, volatile=True)
+    def __init__(self):
+        self.sum = 0
+        self.count = 0
+        self.average = None
 
-        if args.cuda:
-            test_x = test_x.cuda()
-            test_y = test_y.cuda()
-
-        _, max_indices = net(test_x).data.max(1)
-        correct += int((max_indices == test_y).sum())
-
-    accuracy = correct / len(test_dataloader.dataset)
-
-    return accuracy
+    def update(self, value, number):
+        self.sum += value * number
+        self.count += number
+        self.average = self.sum / self.count
 
 
-def average_gradients(args, net):
-    world_size = distributed.get_world_size()
+class AccuracyMeter(object):
 
-    for p in net.parameters():
-        group = distributed.new_group(ranks=list(range(world_size)))
+    def __init__(self):
+        self.correct = 0
+        self.count = 0
+        self.accuracy = None
 
-
-        tensor = p.grad.data.cpu()
-
-        distributed.all_reduce(tensor,
-                               op=distributed.reduce_op.SUM,
-                               group=group)
-
-        tensor /= float(world_size)
-        if args.cuda:
-            p.grad.data = tensor.cuda()
-        else:
-            p.grad.data = tensor
-
-def train(args, epoch, net, optimizer, train_loader, test_loader):
-    for train_index, (train_x, train_y) in enumerate(train_loader):
-        net.train()
-
-        train_x = Variable(train_x)
-        train_y = Variable(train_y)
-
-        if args.cuda:
-            train_x = train_x.cuda()
-            train_y = train_y.cuda()
-
-        pred_y = net(train_x)
-        loss = F.cross_entropy(pred_y, train_y)
-
-        optimizer.zero_grad()
-        loss.backward()
-        # average the gradients
-        average_gradients(args, net)
-        optimizer.step()
-
-        if train_index % args.log_interval == 0:
-
-            accuracy = evaluate(args, net, test_loader)
-
-            print('Train epoch: {}, batch index: {}, loss: {}, accuracy: {}.'.format(epoch,
-                                                                                     train_index,
-                                                                                     float(loss.data),
-                                                                                     accuracy))
+    def update(self, correct, number):
+        self.correct += correct
+        self.count += number
+        self.accuracy = self.correct / self.count
 
 
 def solve(args):
-    net = Net()
-    if args.cuda:
-        net.cuda()
+    device = torch.device('cuda' if args.cuda else 'cpu')
+
+    net = Net().to(device)
 
     optimizer = torch.optim.Adam(net.parameters(), lr=args.learning_rate)
 
-    train_loader, test_loader = get_dataloader(args.data_dir,
-                                               args.batch_size,
-                                               num_workers=args.num_workers)
+    train_loader, test_loader = get_dataloader(args.root, args.batch_size)
 
-    for epoch in range(args.epochs):
-        train(args, epoch, net, optimizer, train_loader, test_loader)
+    trainer = Trainer(net, optimizer, train_loader, test_loader, device)
+
+    for epoch in range(1, args.epochs + 1):
+        train_loss, train_acc = trainer.train()
+        with torch.no_grad():
+            test_loss, test_acc = trainer.evaluate()
+
+        print(
+            'Train epoch: {}/{},'.format(epoch, args.epochs),
+            'train loss: {:.6f}, train acc: {:.6f}, test loss: {:.6f}, test acc: {:.6f}.'.
+            format(train_loss, train_acc, test_loss, test_acc))
 
 
 def init_process(args):
-    distributed.init_process_group(backend=args.backend,
-                                   init_method='{}://{}:{}'.format(
-                                       args.backend, args.ip, args.port),
-                                   rank=args.rank,
-                                   world_size=args.world_size)
-
-    solve(args)
+    distributed.init_process_group(
+        backend=args.backend,
+        init_method='{}://{}:{}'.format(args.backend, args.ip, args.port),
+        rank=args.rank,
+        world_size=args.world_size)
 
 
 def main():
@@ -164,14 +176,14 @@ def main():
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--cuda', action='store_true')
     parser.add_argument('--learning_rate', '-lr', type=float, default=1e-3)
-    parser.add_argument('--data-dir', type=str, default='data')
+    parser.add_argument('--root', type=str, default='data')
     parser.add_argument('--batch-size', type=int, default=128)
-    parser.add_argument('--num-workers', type=int, default=1)
-    parser.add_argument('--log-interval', type=int, default=1000)
     args = parser.parse_args()
     print(args)
 
     init_process(args)
+    solve(args)
+
 
 if __name__ == '__main__':
     main()
