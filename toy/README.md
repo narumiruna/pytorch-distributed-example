@@ -1,25 +1,16 @@
 # Toy Example
 
-## In single machine
-
-Terminal 1
+Rank 0
 ```
-$ python main.py --rank 0 --world-size 2
+$ python3 main.py --init-method tcp://127.0.0.1:23456 --rank 0 --world-size 3
 ```
 
-Terminal 2
+Rank 2
 ```
-$ python main.py --rank 1 --world-size 2
-```
-
-## Use two machines
-
-Machine 1 with ip 10.1.14.2
-```
-$ python main.py --rank 0 --world-size 2 --ip 10.1.14.2 --port 22000
+$ python3 main.py --init-method tcp://127.0.0.1:23456 --rank 1 --world-size 3
 ```
 
-Machine 2
+Rank 3
 ```
-$ python main.py --rank 1 --world-size 2 --ip 10.1.14.2 --port 22000
+$ python3 main.py --init-method tcp://127.0.0.1:23456 --rank 2 --world-size 3
 ```
