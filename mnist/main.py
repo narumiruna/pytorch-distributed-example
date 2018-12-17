@@ -101,7 +101,7 @@ class Trainer(object):
         for p in self.net.parameters():
             group = distributed.new_group(ranks=list(range(world_size)))
 
-            tensor = p.grad.data.cpu()
+            tensor = p.grad.data.to(self.device)
 
             distributed.all_reduce(
                 tensor, op=distributed.reduce_op.SUM, group=group)
