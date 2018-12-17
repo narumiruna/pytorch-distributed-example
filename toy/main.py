@@ -38,7 +38,7 @@ def main():
     parser.add_argument(
         '--backend',
         type=str,
-        default='tcp',
+        default='gloo',
         help='Name of the backend to use.')
     parser.add_argument(
         '--init-method',
