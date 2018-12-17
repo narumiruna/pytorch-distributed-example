@@ -99,17 +99,8 @@ class Trainer(object):
         world_size = distributed.get_world_size()
 
         for p in self.net.parameters():
-            group = distributed.new_group(ranks=list(range(world_size)))
-
-            tensor = p.grad.data.to(self.device)
-
-            distributed.all_reduce(
-                tensor, op=distributed.reduce_op.SUM, group=group)
-
-            tensor /= float(world_size)
-
-            p.grad.data = tensor.to(self.device)
-
+            distributed.all_reduce(p.grad.data, op=distributed.reduce_op.SUM)
+            p.grad.data /= float(world_size)
 
 class Net(nn.Module):
 
@@ -179,7 +170,7 @@ def main():
     parser.add_argument(
         '--backend',
         type=str,
-        default='tcp',
+        default='gloo',
         help='Name of the backend to use.')
     parser.add_argument(
         '--init-method',
