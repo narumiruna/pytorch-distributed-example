@@ -52,6 +52,16 @@ class Trainer(object):
         self.test_loader = test_loader
         self.device = device
 
+    def fit(self, epochs):
+        for epoch in range(1, epochs + 1):
+            train_loss, train_acc = self.train()
+            test_loss, test_acc = self.evaluate()
+
+            print(
+                'Epoch: {}/{},'.format(epoch, epochs),
+                'train loss: {:.6f}, train acc: {:.6f}, test loss: {:.6f}, test acc: {:.6f}.'
+                .format(train_loss, train_acc, test_loss, test_acc))
+
     def train(self):
         train_loss = AverageMeter()
         train_acc = AccuracyMeter()
@@ -102,6 +112,7 @@ class Trainer(object):
             distributed.all_reduce(p.grad.data, op=distributed.reduce_op.SUM)
             p.grad.data /= float(world_size)
 
+
 class Net(nn.Module):
 
     def __init__(self):
@@ -146,15 +157,7 @@ def solve(args):
     train_loader, test_loader = get_dataloader(args.root, args.batch_size)
 
     trainer = Trainer(net, optimizer, train_loader, test_loader, device)
-
-    for epoch in range(1, args.epochs + 1):
-        train_loss, train_acc = trainer.train()
-        test_loss, test_acc = trainer.evaluate()
-
-        print(
-            'Epoch: {}/{},'.format(epoch, args.epochs),
-            'train loss: {:.6f}, train acc: {:.6f}, test loss: {:.6f}, test acc: {:.6f}.'.
-            format(train_loss, train_acc, test_loss, test_acc))
+    trainer.fit(args.epochs)
 
 
 def init_process(args):
