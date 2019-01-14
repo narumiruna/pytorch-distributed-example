@@ -147,8 +147,9 @@ def get_dataloader(root, batch_size):
     return train_loader, test_loader
 
 
-def solve(args):
-    device = torch.device('cuda' if args.cuda else 'cpu')
+def run(args):
+    device = torch.device(
+        'cuda' if torch.cuda.is_available() and not args.no_cuda else 'cpu')
 
     net = Net().to(device)
 
@@ -194,11 +195,10 @@ def main():
     parser.add_argument('--root', type=str, default='data')
     parser.add_argument('--batch-size', type=int, default=128)
     args = parser.parse_args()
-    args.cuda = torch.cuda.is_available() and not args.no_cuda
     print(args)
 
     init_process(args)
-    solve(args)
+    run(args)
 
 
 if __name__ == '__main__':
