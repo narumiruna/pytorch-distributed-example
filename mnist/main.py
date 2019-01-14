@@ -177,16 +177,16 @@ def main():
         default='gloo',
         help='Name of the backend to use.')
     parser.add_argument(
-        '--init-method',
         '-i',
+        '--init-method',
         type=str,
         default='tcp://127.0.0.1:23456',
         help='URL specifying how to initialize the package.')
     parser.add_argument(
-        '--rank', '-r', type=int, help='Rank of the current process.')
+        '-r', '--rank', type=int, help='Rank of the current process.')
     parser.add_argument(
-        '--world-size',
         '-s',
+        '--world-size',
         type=int,
         help='Number of processes participating in the job.')
     parser.add_argument('--epochs', type=int, default=20)
