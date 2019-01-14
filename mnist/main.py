@@ -10,7 +10,7 @@ from torch.utils.data.distributed import DistributedSampler
 from torchvision import datasets, transforms
 
 
-class AverageMeter(object):
+class Average(object):
 
     def __init__(self):
         self.sum = 0
@@ -24,8 +24,11 @@ class AverageMeter(object):
     def average(self):
         return self.sum / self.count
 
+    def __str__(self):
+        return '{:.6f}'.format(self.average)
 
-class AccuracyMeter(object):
+
+class Accuracy(object):
 
     def __init__(self):
         self.correct = 0
@@ -41,6 +44,9 @@ class AccuracyMeter(object):
     @property
     def accuracy(self):
         return self.correct / self.count
+
+    def __str__(self):
+        return '{:.2f}%'.format(self.accuracy * 100)
 
 
 class Trainer(object):
@@ -59,12 +65,12 @@ class Trainer(object):
 
             print(
                 'Epoch: {}/{},'.format(epoch, epochs),
-                'train loss: {:.6f}, train acc: {:.6f}, test loss: {:.6f}, test acc: {:.6f}.'
-                .format(train_loss, train_acc, test_loss, test_acc))
+                'train loss: {}, train acc: {},'.format(train_loss, train_acc),
+                'test loss: {}, test acc: {}.'.format(test_loss, test_acc))
 
     def train(self):
-        train_loss = AverageMeter()
-        train_acc = AccuracyMeter()
+        train_loss = Average()
+        train_acc = Accuracy()
 
         self.net.train()
 
@@ -84,11 +90,11 @@ class Trainer(object):
             train_loss.update(loss.item(), data.size(0))
             train_acc.update(output, label)
 
-        return train_loss.average, train_acc.accuracy
+        return train_loss, train_acc
 
     def evaluate(self):
-        test_loss = AverageMeter()
-        test_acc = AccuracyMeter()
+        test_loss = Average()
+        test_acc = Accuracy()
 
         self.net.eval()
 
@@ -103,7 +109,7 @@ class Trainer(object):
                 test_loss.update(loss.item(), data.size(0))
                 test_acc.update(output, label)
 
-        return test_loss.average, test_acc.accuracy
+        return test_loss, test_acc
 
     def average_gradients(self):
         world_size = distributed.get_world_size()
