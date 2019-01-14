@@ -130,10 +130,9 @@ class Net(nn.Module):
 
 
 def get_dataloader(root, batch_size):
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.13066047740239478,), (0.3081078087569972,))
-    ])
+    transform = transforms.Compose(
+        [transforms.ToTensor(),
+         transforms.Normalize((0.1307,), (0.3081,))])
 
     train_set = datasets.MNIST(
         root, train=True, transform=transform, download=True)
