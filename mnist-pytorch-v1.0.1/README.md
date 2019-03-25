@@ -29,5 +29,6 @@ Install [docker](https://docs.docker.com/install/) and [docker-compose](https://
 ```
 $ docker build --file Dockerfile --tag pytorch-distributed-example .
 $ docker-compose up
+For GPU
+$ docker-compose --file docker-compose-gpu.yml up
 ```
-
