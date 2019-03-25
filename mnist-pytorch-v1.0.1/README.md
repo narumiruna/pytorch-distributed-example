@@ -24,6 +24,10 @@ $ python3 main.py --init-method tcp://127.0.0.1:23456 --rank 1 --world-size 2 --
 
 ## Run in docker
 
+Install [docker](https://docs.docker.com/install/) and [docker-compose](https://docs.docker.com/compose/install/)
+
 ```
+$ docker build --file Dockerfile --tag pytorch-distributed-example .
 $ docker-compose up
 ```
+
