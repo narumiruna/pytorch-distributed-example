@@ -1,13 +1,15 @@
-version: "3"
+version: "2.3"
 services:
   rank0:
     build: .
+    runtime: nvidia
     networks:
       dist-bridge:
         ipv4_address: 10.1.0.10
     command: python -u main.py --init-method tcp://10.1.0.10:23456 --rank 0 --world-size 2
   rank1:
     build: .
+    runtime: nvidia
     networks:
       dist-bridge:
         ipv4_address: 10.1.0.11

@@ -143,12 +143,11 @@ def run(args):
     use_cuda = torch.cuda.is_available() and not args.no_cuda
     device = torch.device('cuda' if use_cuda else 'cpu')
 
-    net = Net()
+    net = Net().to(device)
     if use_cuda:
         net = nn.parallel.DistributedDataParallel(net)
     else:
         net = nn.parallel.DistributedDataParallelCPU(net)
-    net.to(device)
 
     optimizer = torch.optim.Adam(net.parameters(), lr=args.learning_rate)
 
