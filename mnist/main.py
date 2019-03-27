@@ -202,6 +202,8 @@ def main():
     args = parser.parse_args()
     print(args)
 
+    torch.random.manual_seed(0)
+
     init_process(args)
     run(args)
 
