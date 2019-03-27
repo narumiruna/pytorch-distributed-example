@@ -6,4 +6,5 @@ RUN pip install torchvision \
 ENV GLOO_SOCKET_IFNAME=eth0
 
 WORKDIR /work
+RUN python -c "from torchvision import datasets;datasets.MNIST('data', download=True)"
 COPY main.py .
