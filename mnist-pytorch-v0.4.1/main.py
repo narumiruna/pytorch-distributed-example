@@ -115,8 +115,10 @@ class Trainer(object):
         world_size = distributed.get_world_size()
 
         for p in self.net.parameters():
-            distributed.all_reduce(p.grad.data, op=distributed.reduce_op.SUM)
-            p.grad.data /= float(world_size)
+            t = p.grad.data.cpu()
+            distributed.all_reduce(t, op=distributed.reduce_op.SUM)
+            t /= float(world_size)
+            p.grad.data = t.to(self.device)
 
 
 class Net(nn.Module):
@@ -179,7 +181,7 @@ def main():
     parser.add_argument(
         '--backend',
         type=str,
-        default='gloo',
+        default='tcp',
         help='Name of the backend to use.')
     parser.add_argument(
         '-i',
@@ -201,6 +203,8 @@ def main():
     parser.add_argument('--batch-size', type=int, default=128)
     args = parser.parse_args()
     print(args)
+
+    torch.random.manual_seed(0)
 
     init_process(args)
     run(args)
