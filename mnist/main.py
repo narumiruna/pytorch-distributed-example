@@ -7,7 +7,6 @@ import torch.nn.functional as F
 from torch import distributed, nn
 from torch.utils import data
 from torch.utils.data.distributed import DistributedSampler
-
 from torchvision import datasets, transforms
 
 
