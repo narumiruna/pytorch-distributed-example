@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- pytorch>=0.4.0
+- pytorch==1.0.1
 - torchvision
 
 ## References
