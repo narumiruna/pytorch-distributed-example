@@ -1,8 +1,12 @@
 # Pytorch Distributed Example
 
+If you are using previous version of PyTorch:
+- [v1.0.1](https://github.com/narumiruna/pytorch-distributed-example/tree/v1.0.1)
+- [v0.4.1](https://github.com/narumiruna/pytorch-distributed-example/tree/v0.4.1)
+
 ## Requirements
 
-- pytorch>=0.4.0
+- pytorch==1.1.0
 - torchvision
 
 ## References
