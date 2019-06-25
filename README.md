@@ -6,7 +6,7 @@ If you are using previous versions of PyTorch:
 
 ## Requirements
 
-- pytorch==1.0.1
+- pytorch==1.1.0
 - torchvision
 
 ## References
