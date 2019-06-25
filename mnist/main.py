@@ -6,8 +6,14 @@ import torch
 import torch.nn.functional as F
 from torch import distributed, nn
 from torch.utils import data
-from torch.utils.data.distributed import DistributedSampler
 from torchvision import datasets, transforms
+
+
+def distributed_is_initialized():
+    if distributed.is_available():
+        if distributed.is_initialized():
+            return True
+    return False
 
 
 class Average(object):
@@ -129,7 +135,11 @@ def get_dataloaders(root, batch_size):
     ])
 
     train_set = datasets.MNIST(root, train=True, transform=transform, download=True)
-    sampler = DistributedSampler(train_set)
+
+    sampler = None
+    if distributed_is_initialized():
+        sampler = data.DistributedSampler(train_set)
+
     train_loader = data.DataLoader(train_set, batch_size=batch_size, shuffle=(sampler is None), sampler=sampler)
 
     test_set = datasets.MNIST(root, train=False, transform=transform, download=True)
@@ -141,8 +151,13 @@ def get_dataloaders(root, batch_size):
 def run(args):
     device = torch.device('cuda' if torch.cuda.is_available() and not args.no_cuda else 'cpu')
 
-    model = Net().to(device)
-    model = nn.parallel.DistributedDataParallel(model)
+    model = Net()
+    if distributed_is_initialized():
+        model.to(device)
+        model = nn.parallel.DistributedDataParallel(model)
+    else:
+        model = nn.DataParallel(model)
+        model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
@@ -161,8 +176,8 @@ def main():
         type=str,
         default='tcp://127.0.0.1:23456',
         help='URL specifying how to initialize the package.')
-    parser.add_argument('-s', '--world-size', type=int, help='Number of processes participating in the job.')
-    parser.add_argument('-r', '--rank', type=int, help='Rank of the current process.')
+    parser.add_argument('-s', '--world-size', type=int, default=1, help='Number of processes participating in the job.')
+    parser.add_argument('-r', '--rank', type=int, default=0, help='Rank of the current process.')
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--no-cuda', action='store_true')
     parser.add_argument('-lr', '--learning-rate', type=float, default=1e-3)
@@ -171,12 +186,13 @@ def main():
     args = parser.parse_args()
     print(args)
 
-    distributed.init_process_group(
-        backend=args.backend,
-        init_method=args.init_method,
-        world_size=args.world_size,
-        rank=args.rank,
-    )
+    if args.world_size > 1:
+        distributed.init_process_group(
+            backend=args.backend,
+            init_method=args.init_method,
+            world_size=args.world_size,
+            rank=args.rank,
+        )
 
     run(args)
 
