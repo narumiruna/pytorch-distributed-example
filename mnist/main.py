@@ -144,7 +144,7 @@ class MNISTDataLoader(data.DataLoader):
         super(MNISTDataLoader, self).__init__(
             dataset,
             batch_size=batch_size,
-            shuffle=(sampler or None),
+            shuffle=(sampler is None),
             sampler=sampler,
         )
 
