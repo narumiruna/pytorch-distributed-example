@@ -1,4 +1,4 @@
-# MNIST Example for PyTorch
+# MNIST Example
 
 ```shell
 export GLOO_SOCKET_IFNAME=eth0
