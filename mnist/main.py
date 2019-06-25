@@ -16,16 +16,16 @@ class Average(object):
         self.sum = 0
         self.count = 0
 
-    def update(self, value, number):
-        self.sum += value * number
-        self.count += number
+    def __str__(self):
+        return '{:.6f}'.format(self.average)
 
     @property
     def average(self):
         return self.sum / self.count
 
-    def __str__(self):
-        return '{:.6f}'.format(self.average)
+    def update(self, value, number):
+        self.sum += value * number
+        self.count += number
 
 
 class Accuracy(object):
@@ -122,7 +122,7 @@ class Net(nn.Module):
         return self.fc(x.view(x.size(0), -1))
 
 
-def get_dataloader(root, batch_size):
+def get_dataloaders(root, batch_size):
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,)),
@@ -146,7 +146,7 @@ def run(args):
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
-    train_loader, test_loader = get_dataloader(args.root, args.batch_size)
+    train_loader, test_loader = get_dataloaders(args.root, args.batch_size)
 
     trainer = Trainer(model, optimizer, train_loader, test_loader, device)
     trainer.fit(args.epochs)
