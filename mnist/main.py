@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from torch import distributed, nn
 from torch.utils import data
 from torch.utils.data.distributed import DistributedSampler
+
 from torchvision import datasets, transforms
 
 
@@ -161,11 +162,6 @@ def run(args):
     trainer.fit(args.epochs)
 
 
-def init_process(args):
-    distributed.init_process_group(
-        backend=args.backend, init_method=args.init_method, rank=args.rank, world_size=args.world_size)
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--backend', type=str, default='tcp', help='Name of the backend to use.')
@@ -175,11 +171,11 @@ def main():
         type=str,
         default='tcp://127.0.0.1:23456',
         help='URL specifying how to initialize the package.')
-    parser.add_argument('-r', '--rank', type=int, help='Rank of the current process.')
     parser.add_argument('-s', '--world-size', type=int, help='Number of processes participating in the job.')
+    parser.add_argument('-r', '--rank', type=int, help='Rank of the current process.')
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--no-cuda', action='store_true')
-    parser.add_argument('--learning-rate', '-lr', type=float, default=1e-3)
+    parser.add_argument('-lr', '--learning-rate', type=float, default=1e-3)
     parser.add_argument('--root', type=str, default='data')
     parser.add_argument('--batch-size', type=int, default=128)
     args = parser.parse_args()
@@ -187,7 +183,13 @@ def main():
 
     torch.random.manual_seed(0)
 
-    init_process(args)
+    distributed.init_process_group(
+        backend=args.backend,
+        init_method=args.init_method,
+        world_size=args.world_size,
+        rank=args.rank,
+    )
+
     run(args)
 
 
