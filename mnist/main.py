@@ -128,24 +128,25 @@ class Net(nn.Module):
         return self.fc(x.view(x.size(0), -1))
 
 
-def get_dataloaders(root, batch_size):
-    transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,)),
-    ])
+class MNISTDataLoader(data.DataLoader):
 
-    train_set = datasets.MNIST(root, train=True, transform=transform, download=True)
+    def __init__(self, root, batch_size, train=True):
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,)),
+        ])
 
-    sampler = None
-    if distributed_is_initialized():
-        sampler = data.DistributedSampler(train_set)
+        dataset = datasets.MNIST(root, train=train, transform=transform, download=True)
+        sampler = None
+        if train and distributed_is_initialized():
+            sampler = data.DistributedSampler(dataset)
 
-    train_loader = data.DataLoader(train_set, batch_size=batch_size, shuffle=(sampler is None), sampler=sampler)
-
-    test_set = datasets.MNIST(root, train=False, transform=transform, download=True)
-    test_loader = data.DataLoader(test_set, batch_size=batch_size, shuffle=False)
-
-    return train_loader, test_loader
+        super(MNISTDataLoader, self).__init__(
+            dataset,
+            batch_size=batch_size,
+            shuffle=(sampler or None),
+            sampler=sampler,
+        )
 
 
 def run(args):
@@ -161,7 +162,8 @@ def run(args):
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
-    train_loader, test_loader = get_dataloaders(args.root, args.batch_size)
+    train_loader = MNISTDataLoader(args.root, args.batch_size, train=True)
+    test_loader = MNISTDataLoader(args.root, args.batch_size, train=False)
 
     trainer = Trainer(model, optimizer, train_loader, test_loader, device)
     trainer.fit(args.epochs)
