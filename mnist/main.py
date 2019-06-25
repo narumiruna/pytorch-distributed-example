@@ -40,6 +40,13 @@ class Accuracy(object):
         self.correct = 0
         self.count = 0
 
+    def __str__(self):
+        return '{:.2f}%'.format(self.accuracy * 100)
+
+    @property
+    def accuracy(self):
+        return self.correct / self.count
+
     def update(self, output, target):
         with torch.no_grad():
             pred = output.argmax(dim=1)
@@ -47,13 +54,6 @@ class Accuracy(object):
 
         self.correct += correct
         self.count += output.size(0)
-
-    @property
-    def accuracy(self):
-        return self.correct / self.count
-
-    def __str__(self):
-        return '{:.2f}%'.format(self.accuracy * 100)
 
 
 class Trainer(object):
