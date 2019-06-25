@@ -139,14 +139,10 @@ def get_dataloader(root, batch_size):
 
 
 def run(args):
-    use_cuda = torch.cuda.is_available() and not args.no_cuda
-    device = torch.device('cuda' if use_cuda else 'cpu')
+    device = torch.device('cuda' if torch.cuda.is_available() and not args.no_cuda else 'cpu')
 
     model = Net().to(device)
-    if use_cuda:
-        model = nn.parallel.DistributedDataParallel(model)
-    else:
-        model = nn.parallel.DistributedDataParallelCPU(model)
+    model = nn.parallel.DistributedDataParallel(model)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
@@ -181,6 +177,7 @@ def main():
         world_size=args.world_size,
         rank=args.rank,
     )
+
     run(args)
 
 
