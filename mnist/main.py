@@ -35,8 +35,9 @@ class Accuracy(object):
         self.count = 0
 
     def update(self, output, target):
-        pred = output.data.argmax(dim=1)
-        correct = pred.eq(target.data).sum().item()
+        with torch.no_grad():
+            pred = output.argmax(dim=1)
+            correct = pred.eq(target).sum().item()
 
         self.correct += correct
         self.count += output.size(0)
@@ -84,8 +85,6 @@ class Trainer(object):
 
             self.optimizer.zero_grad()
             loss.backward()
-            # average the gradients
-            self.average_gradients()
             self.optimizer.step()
 
             train_loss.update(loss.item(), data.size(0))
@@ -111,15 +110,6 @@ class Trainer(object):
                 test_acc.update(output, target)
 
         return test_loss, test_acc
-
-    def average_gradients(self):
-        world_size = distributed.get_world_size()
-
-        for p in self.model.parameters():
-            t = p.grad.data.cpu()
-            distributed.all_reduce(t, op=distributed.reduce_op.SUM)
-            t /= float(world_size)
-            p.grad.data = t.to(self.device)
 
 
 class Net(nn.Module):
@@ -149,9 +139,14 @@ def get_dataloader(root, batch_size):
 
 
 def run(args):
-    device = torch.device('cuda' if torch.cuda.is_available() and not args.no_cuda else 'cpu')
+    use_cuda = torch.cuda.is_available() and not args.no_cuda
+    device = torch.device('cuda' if use_cuda else 'cpu')
 
     model = Net().to(device)
+    if use_cuda:
+        model = nn.parallel.DistributedDataParallel(model)
+    else:
+        model = nn.parallel.DistributedDataParallelCPU(model)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
@@ -163,7 +158,7 @@ def run(args):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--backend', type=str, default='tcp', help='Name of the backend to use.')
+    parser.add_argument('--backend', type=str, default='gloo', help='Name of the backend to use.')
     parser.add_argument(
         '-i',
         '--init-method',
@@ -180,15 +175,12 @@ def main():
     args = parser.parse_args()
     print(args)
 
-    torch.random.manual_seed(0)
-
     distributed.init_process_group(
         backend=args.backend,
         init_method=args.init_method,
         world_size=args.world_size,
         rank=args.rank,
     )
-
     run(args)
 
 
