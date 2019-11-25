@@ -47,10 +47,10 @@ class Accuracy(object):
     def accuracy(self):
         return self.correct / self.count
 
+    @torch.no_grad()
     def update(self, output, target):
-        with torch.no_grad():
-            pred = output.argmax(dim=1)
-            correct = pred.eq(target).sum().item()
+        pred = output.argmax(dim=1)
+        correct = pred.eq(target).sum().item()
 
         self.correct += correct
         self.count += output.size(0)
@@ -98,22 +98,22 @@ class Trainer(object):
 
         return train_loss, train_acc
 
+    @torch.no_grad()
     def evaluate(self):
         self.model.eval()
 
         test_loss = Average()
         test_acc = Accuracy()
 
-        with torch.no_grad():
-            for data, target in self.test_loader:
-                data = data.to(self.device)
-                target = target.to(self.device)
+        for data, target in self.test_loader:
+            data = data.to(self.device)
+            target = target.to(self.device)
 
-                output = self.model(data)
-                loss = F.cross_entropy(output, target)
+            output = self.model(data)
+            loss = F.cross_entropy(output, target)
 
-                test_loss.update(loss.item(), data.size(0))
-                test_acc.update(output, target)
+            test_loss.update(loss.item(), data.size(0))
+            test_acc.update(output, target)
 
         return test_loss, test_acc
 
@@ -172,12 +172,11 @@ def run(args):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--backend', type=str, default='gloo', help='Name of the backend to use.')
-    parser.add_argument(
-        '-i',
-        '--init-method',
-        type=str,
-        default='tcp://127.0.0.1:23456',
-        help='URL specifying how to initialize the package.')
+    parser.add_argument('-i',
+                        '--init-method',
+                        type=str,
+                        default='tcp://127.0.0.1:23456',
+                        help='URL specifying how to initialize the package.')
     parser.add_argument('-s', '--world-size', type=int, default=1, help='Number of processes participating in the job.')
     parser.add_argument('-r', '--rank', type=int, default=0, help='Rank of the current process.')
     parser.add_argument('--epochs', type=int, default=20)
