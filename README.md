@@ -8,7 +8,7 @@ If you are using previous version of PyTorch:
 
 ## Requirements
 
-- pytorch==1.1.0
+- pytorch
 - torchvision
 
 ## References
