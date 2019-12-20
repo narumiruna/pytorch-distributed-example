@@ -1,12 +1,15 @@
-from __future__ import division, print_function
+from __future__ import division
+from __future__ import print_function
 
 import argparse
 
 import torch
 import torch.nn.functional as F
-from torch import distributed, nn
+from torch import distributed
+from torch import nn
 from torch.utils import data
-from torchvision import datasets, transforms
+from torchvision import datasets
+from torchvision import transforms
 
 
 def distributed_is_initialized():
@@ -82,18 +85,18 @@ class Trainer(object):
         train_loss = Average()
         train_acc = Accuracy()
 
-        for data, target in self.train_loader:
-            data = data.to(self.device)
+        for image, target in self.train_loader:
+            image = image.to(self.device)
             target = target.to(self.device)
 
-            output = self.model(data)
+            output = self.model(image)
             loss = F.cross_entropy(output, target)
 
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
 
-            train_loss.update(loss.item(), data.size(0))
+            train_loss.update(loss.item(), image.size(0))
             train_acc.update(output, target)
 
         return train_loss, train_acc
@@ -105,14 +108,14 @@ class Trainer(object):
         test_loss = Average()
         test_acc = Accuracy()
 
-        for data, target in self.test_loader:
-            data = data.to(self.device)
+        for image, target in self.test_loader:
+            image = image.to(self.device)
             target = target.to(self.device)
 
-            output = self.model(data)
+            output = self.model(image)
             loss = F.cross_entropy(output, target)
 
-            test_loss.update(loss.item(), data.size(0))
+            test_loss.update(loss.item(), image.size(0))
             test_acc.update(output, target)
 
         return test_loss, test_acc
@@ -149,8 +152,8 @@ class MNISTDataLoader(data.DataLoader):
         )
 
 
-def run(args):
-    device = torch.device('cuda' if torch.cuda.is_available() and not args.no_cuda else 'cpu')
+def run(root, batch_size, learning_rate, epochs, no_cuda):
+    device = torch.device('cuda' if torch.cuda.is_available() and not no_cuda else 'cpu')
 
     model = Net()
     if distributed_is_initialized():
@@ -160,13 +163,13 @@ def run(args):
         model = nn.DataParallel(model)
         model.to(device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    train_loader = MNISTDataLoader(args.root, args.batch_size, train=True)
-    test_loader = MNISTDataLoader(args.root, args.batch_size, train=False)
+    train_loader = MNISTDataLoader(root, batch_size, train=True)
+    test_loader = MNISTDataLoader(root, batch_size, train=False)
 
     trainer = Trainer(model, optimizer, train_loader, test_loader, device)
-    trainer.fit(args.epochs)
+    trainer.fit(epochs)
 
 
 def main():
@@ -195,7 +198,7 @@ def main():
             rank=args.rank,
         )
 
-    run(args)
+    run(args.root, args.batch_size, args.learning_rate, args.epochs, args.no_cuda)
 
 
 if __name__ == '__main__':
