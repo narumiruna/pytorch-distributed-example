@@ -150,15 +150,15 @@ class MNISTDataLoader(data.DataLoader):
 
 
 def run(args):
-    device = torch.device('cuda' if torch.cuda.is_available() and not args.no_cuda else 'cpu')
+    use_cuda = torch.cuda.is_available() and not args.no_cuda
+    if use_cuda:
+        torch.cuda.set_device(args.local_rank)
+    device = torch.device(f'cuda:{args.local_rank}' if use_cuda else 'cpu')
 
     model = Net()
+    model.to(device)
     if distributed_is_initialized():
-        model.to(device)
-        model = nn.parallel.DistributedDataParallel(model)
-    else:
-        model = nn.DataParallel(model)
-        model.to(device)
+        model = nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank], output_device=args.local_rank)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
@@ -172,13 +172,7 @@ def run(args):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--backend', type=str, default='gloo', help='Name of the backend to use.')
-    parser.add_argument('-i',
-                        '--init-method',
-                        type=str,
-                        default='tcp://127.0.0.1:23456',
-                        help='URL specifying how to initialize the package.')
-    parser.add_argument('-s', '--world-size', type=int, default=1, help='Number of processes participating in the job.')
-    parser.add_argument('-r', '--rank', type=int, default=0, help='Rank of the current process.')
+    parser.add_argument('--local_rank', type=int)
     parser.add_argument('--epochs', type=int, default=20)
     parser.add_argument('--no-cuda', action='store_true')
     parser.add_argument('-lr', '--learning-rate', type=float, default=1e-3)
@@ -187,14 +181,7 @@ def main():
     args = parser.parse_args()
     print(args)
 
-    if args.world_size > 1:
-        distributed.init_process_group(
-            backend=args.backend,
-            init_method=args.init_method,
-            world_size=args.world_size,
-            rank=args.rank,
-        )
-
+    distributed.init_process_group(backend=args.backend)
     run(args)
 
 

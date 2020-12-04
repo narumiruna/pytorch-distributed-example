@@ -5,13 +5,13 @@ services:
     networks:
       bridge:
         ipv4_address: 10.1.0.10
-    command: python -u main.py --init-method tcp://10.1.0.10:23456 --world-size 2 --rank 0
+    command: python3 -m torch.distributed.launch --nproc_per_node=1 --nnodes=2 --node_rank=0 --master_addr="10.1.0.10" --master_port=1234 main.py
   rank1:
     image: pytorch-distributed-example
     networks:
       bridge:
         ipv4_address: 10.1.0.11
-    command: python -u main.py --init-method tcp://10.1.0.10:23456 --world-size 2 --rank 1
+    command: python3 -m torch.distributed.launch --nproc_per_node=1 --nnodes=2 --node_rank=1 --master_addr="10.1.0.10" --master_port=1234 main.py
 networks:
   bridge:
     driver: bridge
